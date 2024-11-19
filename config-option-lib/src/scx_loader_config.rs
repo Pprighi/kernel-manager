@@ -56,6 +56,8 @@ pub enum SupportedSched {
     Rusty,
     #[serde(rename = "scx_lavd")]
     Lavd,
+    #[serde(rename = "scx_flash")]
+    Flash,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -183,6 +185,7 @@ pub fn get_default_config() -> Config {
             ("scx_bpfland".to_string(), get_default_sched_for_config(&SupportedSched::Bpfland)),
             ("scx_rusty".to_string(), get_default_sched_for_config(&SupportedSched::Rusty)),
             ("scx_lavd".to_string(), get_default_sched_for_config(&SupportedSched::Lavd)),
+            ("scx_flash".to_string(), get_default_sched_for_config(&SupportedSched::Flash)),
         ]),
     }
 }
@@ -271,6 +274,8 @@ fn get_default_scx_flags_for_mode(scx_sched: &SupportedSched, sched_mode: SchedM
         },
         // scx_rusty doesn't support any of these modes
         SupportedSched::Rusty => vec![],
+        // scx_flash doesn't support any of these modes
+        SupportedSched::Flash => vec![],
     }
 }
 
@@ -280,6 +285,7 @@ fn get_scx_from_str(scx_name: &str) -> Result<SupportedSched> {
         "scx_bpfland" => Ok(SupportedSched::Bpfland),
         "scx_rusty" => Ok(SupportedSched::Rusty),
         "scx_lavd" => Ok(SupportedSched::Lavd),
+        "scx_flash" => Ok(SupportedSched::Flash),
         _ => Err(anyhow::anyhow!("{scx_name} is not supported")),
     }
 }
@@ -290,6 +296,7 @@ fn get_name_from_scx(supported_sched: &SupportedSched) -> &'static str {
         SupportedSched::Bpfland => "scx_bpfland",
         SupportedSched::Rusty => "scx_rusty",
         SupportedSched::Lavd => "scx_lavd",
+        SupportedSched::Flash => "scx_flash",
     }
 }
 
@@ -319,6 +326,12 @@ auto_mode = []
 gaming_mode = ["--performance"]
 lowlatency_mode = ["--performance"]
 powersave_mode = ["--powersave"]
+
+[scheds.scx_flash]
+auto_mode = []
+gaming_mode = []
+lowlatency_mode = []
+powersave_mode = []
 "#;
 
         let parsed_config = parse_config_content(config_str).expect("Failed to parse config");

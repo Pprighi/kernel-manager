@@ -7,7 +7,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 ## name and version
 ##
 project(cachyos-kernel-manager
-        VERSION 1.11.0
+        VERSION 1.12.0
         LANGUAGES CXX)
 
 

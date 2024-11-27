@@ -98,11 +98,6 @@ auto is_scx_loader_service_enabled() noexcept -> bool {
     return utils::exec("systemctl is-enabled scx_loader"sv) == "enabled"sv;
 }
 
-auto is_scx_loader_service_active() noexcept -> bool {
-    using namespace std::string_view_literals;
-    return utils::exec("systemctl is-active scx_loader"sv) == "active"sv;
-}
-
 auto is_scx_service_enabled() noexcept -> bool {
     using namespace std::string_view_literals;
     return utils::exec("systemctl is-enabled scx"sv) == "enabled"sv;
@@ -111,16 +106,6 @@ auto is_scx_service_enabled() noexcept -> bool {
 auto is_scx_service_active() noexcept -> bool {
     using namespace std::string_view_literals;
     return utils::exec("systemctl is-active scx"sv) == "active"sv;
-}
-
-void disable_scx_loader_service() noexcept {
-    if (is_scx_loader_service_enabled()) {
-        spawn_child_process("/usr/bin/systemctl", {"disable", "--now", "-f", "scx_loader"});
-        fmt::print("Disabling scx_loader service\n");
-    } else if (is_scx_loader_service_active()) {
-        spawn_child_process("/usr/bin/systemctl", {"stop", "-f", "scx_loader"});
-        fmt::print("Stoping scx_loader service\n");
-    }
 }
 
 void disable_scx_service() noexcept {
@@ -223,9 +208,15 @@ void SchedExtWindow::on_disable() noexcept {
     m_ui->disable_button->setEnabled(false);
     m_ui->apply_button->setEnabled(false);
 
-    using namespace std::string_view_literals;
-    // TODO(vnepogodin): refactor that
-    disable_scx_loader_service();
+    // write scx_loader configuration to the temp file
+    const auto tmp_config_path = std::string{"/tmp/scx_loader.toml"};
+    if (!m_scx_config->disable_scx_sched(tmp_config_path)) {
+        QMessageBox::critical(this, "CachyOS Kernel Manager", tr("Cannot disable scx_loader"));
+    }
+
+    // copy scx_loader configuration from the temp file to the actual path with root permissions
+    auto config_path = QString::fromStdString(std::string(m_config_path));
+    spawn_child_process("/usr/bin/pkexec", {QStringLiteral("/usr/bin/cp"), QString::fromStdString(tmp_config_path), config_path});
 
     m_ui->disable_button->setEnabled(true);
     m_ui->apply_button->setEnabled(true);

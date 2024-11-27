@@ -12,6 +12,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use tokio::runtime::Runtime;
+use zbus::Connection;
 
 #[cxx::bridge(namespace = "scx_loader")]
 mod ffi {
@@ -41,6 +43,9 @@ mod ffi {
         /// Set the default scheduler with default mode
         fn set_scx_sched_with_mode(&mut self, supported_sched: &str, sched_mode: u32)
             -> Result<()>;
+
+        /// Disables auto start of scheduler, and stops current scheduler
+        fn disable_scx_sched(&mut self, config_path: &str) -> Result<()>;
     }
 }
 
@@ -107,6 +112,16 @@ fn init_config_file(config_path: &str) -> Result<Box<Config>> {
     Ok(Box::new(config))
 }
 
+#[zbus::proxy(
+    interface = "org.scx.Loader",
+    default_service = "org.scx.Loader",
+    default_path = "/org/scx/Loader"
+)]
+pub trait LoaderClient {
+    /// Stops the currently running scheduler.
+    fn stop_scheduler(&self) -> zbus::Result<()>;
+}
+
 impl Config {
     fn write_config_file(&self, filepath: &str) -> Result<()> {
         let toml_content = toml::to_string(self)?;
@@ -150,6 +165,31 @@ impl Config {
 
         self.default_sched = Some(scx_sched);
         self.default_mode = Some(sched_mode);
+
+        Ok(())
+    }
+
+    fn disable_scx_sched(&mut self, config_path: &str) -> Result<()> {
+        // for us to correctly disable it:
+        // 1. set `default_sched` to None
+        // 2. edit config file
+        // 3. call method to stop current scheduler
+
+        // 1.
+        self.default_sched = None;
+
+        // 2.
+        self.write_config_file(config_path).context("Failed to edit config file")?;
+
+        // 3.
+        let rt = Runtime::new().context("Failed to initialize tokio runtime")?;
+        rt.block_on(async move {
+            let connection = Connection::system().await?;
+            let loader_client = LoaderClientProxy::new(&connection).await?;
+            loader_client.stop_scheduler().await?;
+
+            anyhow::Ok(())
+        })?;
 
         Ok(())
     }

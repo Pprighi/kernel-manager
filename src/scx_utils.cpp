@@ -165,4 +165,15 @@ auto Config::write_config_file(std::string_view filepath) noexcept -> bool {
     return false;
 }
 
+auto Config::disable_scx_sched(std::string_view filepath) noexcept -> bool {
+    try {
+        const ::rust::Str filepath_rust(filepath.data(), filepath.size());
+        m_config->disable_scx_sched(filepath_rust);
+        return true;
+    } catch (const std::exception& e) {
+        fmt::print(stderr, "Failed to disable scx scheduler: {}\n", e.what());
+    }
+    return false;
+}
+
 }  // namespace scx::loader
